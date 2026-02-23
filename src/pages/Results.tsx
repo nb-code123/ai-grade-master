@@ -27,10 +27,11 @@ export default function Results() {
   const [results, setResults] = useState<QuestionResult[]>([]);
   const [totalScore, setTotalScore] = useState(0);
   const [maxTotal, setMaxTotal] = useState(0);
+  const [weights, setWeights] = useState({ keywords: 30, semantic: 40, diagram: 20, grammar: 10 });
 
   useEffect(() => {
     const resultsData = sessionStorage.getItem("evaluationResults");
-    
+
     if (!resultsData) {
       toast({
         title: "No Results Found",
@@ -45,6 +46,11 @@ export default function Results() {
     setResults(parsed);
     setTotalScore(parsed.reduce((sum, r) => sum + r.finalScore, 0));
     setMaxTotal(parsed.reduce((sum, r) => sum + r.maxMarks, 0));
+
+    const weightsData = sessionStorage.getItem("evaluationWeights");
+    if (weightsData) {
+      setWeights(JSON.parse(weightsData));
+    }
   }, [navigate, toast]);
 
   const handleExport = () => {
@@ -127,6 +133,7 @@ export default function Results() {
               results={results}
               totalScore={totalScore}
               maxTotal={maxTotal}
+              weights={weights}
             />
 
             <motion.div

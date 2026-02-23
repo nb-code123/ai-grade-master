@@ -16,13 +16,23 @@ interface QuestionResult {
   improvements: string[];
 }
 
+interface Weights {
+  keywords: number;
+  semantic: number;
+  diagram: number;
+  grammar: number;
+}
+
 interface ResultBreakdownProps {
   results: QuestionResult[];
   totalScore: number;
   maxTotal: number;
+  weights?: Weights;
 }
 
-export function ResultBreakdown({ results, totalScore, maxTotal }: ResultBreakdownProps) {
+const DEFAULT_WEIGHTS: Weights = { keywords: 30, semantic: 40, diagram: 20, grammar: 10 };
+
+export function ResultBreakdown({ results, totalScore, maxTotal, weights = DEFAULT_WEIGHTS }: ResultBreakdownProps) {
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
 
   return (
@@ -69,15 +79,14 @@ export function ResultBreakdown({ results, totalScore, maxTotal }: ResultBreakdo
               <div className="flex items-center gap-4">
                 <div className="text-right">
                   <span
-                    className={`text-lg font-bold ${
-                      result.finalScore / result.maxMarks >= 0.8
+                    className={`text-lg font-bold ${result.finalScore / result.maxMarks >= 0.8
                         ? "text-primary"
                         : result.finalScore / result.maxMarks >= 0.6
-                        ? "text-accent"
-                        : result.finalScore / result.maxMarks >= 0.4
-                        ? "text-yellow-500"
-                        : "text-destructive"
-                    }`}
+                          ? "text-accent"
+                          : result.finalScore / result.maxMarks >= 0.4
+                            ? "text-yellow-500"
+                            : "text-destructive"
+                      }`}
                   >
                     {((result.finalScore / result.maxMarks) * 100).toFixed(0)}%
                   </span>
@@ -100,23 +109,23 @@ export function ResultBreakdown({ results, totalScore, maxTotal }: ResultBreakdo
                 {/* Score Breakdown */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div className="bg-secondary/50 rounded-lg p-3 text-center">
-                    <p className="text-xs text-muted-foreground mb-1">Keywords (30%)</p>
+                    <p className="text-xs text-muted-foreground mb-1">Keywords ({weights.keywords}%)</p>
                     <p className="font-semibold text-primary">
                       {result.keywordScore.toFixed(1)}
                     </p>
                   </div>
                   <div className="bg-secondary/50 rounded-lg p-3 text-center">
-                    <p className="text-xs text-muted-foreground mb-1">Semantic (40%)</p>
+                    <p className="text-xs text-muted-foreground mb-1">Semantic ({weights.semantic}%)</p>
                     <p className="font-semibold text-accent">
                       {result.semanticScore.toFixed(1)}
                     </p>
                   </div>
                   <div className="bg-secondary/50 rounded-lg p-3 text-center">
-                    <p className="text-xs text-muted-foreground mb-1">Diagram (20%)</p>
+                    <p className="text-xs text-muted-foreground mb-1">Diagram ({weights.diagram}%)</p>
                     <p className="font-semibold">{result.diagramScore.toFixed(1)}</p>
                   </div>
                   <div className="bg-secondary/50 rounded-lg p-3 text-center">
-                    <p className="text-xs text-muted-foreground mb-1">Grammar (-10%)</p>
+                    <p className="text-xs text-muted-foreground mb-1">Grammar (-{weights.grammar}%)</p>
                     <p className="font-semibold text-destructive">
                       -{result.grammarPenalty.toFixed(1)}
                     </p>

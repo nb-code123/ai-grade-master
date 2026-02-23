@@ -32,7 +32,7 @@ export default function Processing() {
 
   useEffect(() => {
     const evaluationData = sessionStorage.getItem("evaluationData");
-    
+
     if (!evaluationData) {
       toast({
         title: "No Data Found",
@@ -52,8 +52,8 @@ export default function Processing() {
             idx === i
               ? { ...step, status: "processing" }
               : idx < i
-              ? { ...step, status: "completed" }
-              : step
+                ? { ...step, status: "completed" }
+                : step
           )
         );
 
@@ -68,14 +68,26 @@ export default function Processing() {
 
       // Generate mock results
       const data = JSON.parse(evaluationData);
+
+      // Resolve the actual weights to use (custom or default)
+      const formula = data.scoringFormula;
+      const weights = formula?.useCustom && formula?.weights
+        ? formula.weights
+        : { keywords: 30, semantic: 40, diagram: 20, grammar: 10 };
+
+      const kwFrac = weights.keywords / 100;
+      const semFrac = weights.semantic / 100;
+      const diaFrac = weights.diagram / 100;
+      const graFrac = weights.grammar / 100;
+
       const mockResults = data.questions.map((q: any, idx: number) => ({
         questionNumber: idx + 1,
         questionText: q.text || `Question ${idx + 1}`,
         maxMarks: q.maxMarks,
-        keywordScore: q.maxMarks * 0.3 * (0.6 + Math.random() * 0.4),
-        semanticScore: q.maxMarks * 0.4 * (0.5 + Math.random() * 0.5),
-        diagramScore: Math.random() > 0.7 ? q.maxMarks * 0.2 * Math.random() : 0,
-        grammarPenalty: q.maxMarks * 0.1 * Math.random() * 0.5,
+        keywordScore: q.maxMarks * kwFrac * (0.6 + Math.random() * 0.4),
+        semanticScore: q.maxMarks * semFrac * (0.5 + Math.random() * 0.5),
+        diagramScore: Math.random() > 0.7 ? q.maxMarks * diaFrac * Math.random() : 0,
+        grammarPenalty: q.maxMarks * graFrac * Math.random() * 0.5,
         finalScore: 0,
         feedback: "Good attempt. The answer covers most key concepts but could be more detailed.",
         improvements: [
@@ -93,7 +105,15 @@ export default function Processing() {
         );
       });
 
-      sessionStorage.setItem("evaluationResults", JSON.stringify(mockResults));
+      // Persist results alongside the effective weights so Results page can display them
+      sessionStorage.setItem(
+        "evaluationResults",
+        JSON.stringify(mockResults)
+      );
+      sessionStorage.setItem(
+        "evaluationWeights",
+        JSON.stringify(weights)
+      );
 
       // Wait a moment then navigate
       await new Promise((resolve) => setTimeout(resolve, 500));

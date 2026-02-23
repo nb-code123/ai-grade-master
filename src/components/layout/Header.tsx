@@ -1,8 +1,9 @@
 import { Link, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
-import { GraduationCap, Menu, X } from "lucide-react";
+import { GraduationCap, Menu, X, LogOut, User, LogIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 
 const navItems = [
   { path: "/", label: "Overview" },
@@ -16,6 +17,7 @@ const navItems = [
 export function Header() {
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { user, logout, isAuthenticated } = useAuth();
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 glass border-b border-border/50">
@@ -42,11 +44,10 @@ export function Header() {
                   <motion.div
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                      isActive
-                        ? "bg-primary/10 text-primary"
-                        : "text-muted-foreground hover:text-foreground hover:bg-secondary"
-                    }`}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${isActive
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+                      }`}
                   >
                     {item.label}
                   </motion.div>
@@ -54,6 +55,34 @@ export function Header() {
               );
             })}
           </nav>
+
+          {/* User Actions */}
+          <div className="hidden md:flex items-center gap-3">
+            {isAuthenticated ? (
+              <>
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-secondary/50">
+                  <User className="w-4 h-4 text-primary" />
+                  <span className="text-sm font-medium">{user?.name}</span>
+                  {user?.isGuest && (
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-accent/20 text-accent">
+                      Guest
+                    </span>
+                  )}
+                </div>
+                <Button variant="ghost" size="sm" onClick={logout}>
+                  <LogOut className="w-4 h-4" />
+                  Logout
+                </Button>
+              </>
+            ) : (
+              <Link to="/login">
+                <Button variant="hero" size="sm">
+                  <LogIn className="w-4 h-4" />
+                  Login
+                </Button>
+              </Link>
+            )}
+          </div>
 
           {/* Mobile Menu Button */}
           <Button
@@ -82,16 +111,50 @@ export function Header() {
                     key={item.path}
                     to={item.path}
                     onClick={() => setMobileOpen(false)}
-                    className={`px-4 py-3 rounded-lg text-sm font-medium transition-all ${
-                      isActive
+                    className={`px-4 py-3 rounded-lg text-sm font-medium transition-all ${isActive
                         ? "bg-primary/10 text-primary"
                         : "text-muted-foreground hover:text-foreground hover:bg-secondary"
-                    }`}
+                      }`}
                   >
                     {item.label}
                   </Link>
                 );
               })}
+
+              {/* Mobile User Actions */}
+              <div className="border-t border-border/50 mt-2 pt-2">
+                {isAuthenticated ? (
+                  <>
+                    <div className="flex items-center gap-2 px-4 py-2 mb-2">
+                      <User className="w-4 h-4 text-primary" />
+                      <span className="text-sm font-medium">{user?.name}</span>
+                      {user?.isGuest && (
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-accent/20 text-accent">
+                          Guest
+                        </span>
+                      )}
+                    </div>
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-start"
+                      onClick={() => {
+                        logout();
+                        setMobileOpen(false);
+                      }}
+                    >
+                      <LogOut className="w-4 h-4 mr-2" />
+                      Logout
+                    </Button>
+                  </>
+                ) : (
+                  <Link to="/login" onClick={() => setMobileOpen(false)}>
+                    <Button variant="hero" className="w-full">
+                      <LogIn className="w-4 h-4 mr-2" />
+                      Login
+                    </Button>
+                  </Link>
+                )}
+              </div>
             </div>
           </motion.nav>
         )}

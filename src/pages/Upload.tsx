@@ -5,6 +5,7 @@ import { PageContainer } from "@/components/layout/PageContainer";
 import { Header } from "@/components/layout/Header";
 import { FileUploadZone } from "@/components/grading/FileUploadZone";
 import { QuestionCard } from "@/components/grading/QuestionCard";
+import { ScoringFormulaCustomizer } from "@/components/grading/ScoringFormulaCustomizer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -16,6 +17,7 @@ import {
   Upload as UploadIcon,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { ScoringFormula, DEFAULT_FORMULA } from "@/lib/scoringFormula";
 
 interface Question {
   id: string;
@@ -30,6 +32,7 @@ export default function UploadPage() {
   const [questionPaper, setQuestionPaper] = useState<File | null>(null);
   const [modelAnswerFile, setModelAnswerFile] = useState<File | null>(null);
   const [studentAnswer, setStudentAnswer] = useState<File | null>(null);
+  const [scoringFormula, setScoringFormula] = useState<ScoringFormula>(DEFAULT_FORMULA);
   const [questions, setQuestions] = useState<Question[]>([
     { id: "1", text: "", maxMarks: 10, modelAnswer: "" },
   ]);
@@ -85,12 +88,26 @@ export default function UploadPage() {
       return;
     }
 
+    // Validate scoring formula if using custom
+    if (scoringFormula.useCustom) {
+      const total = Object.values(scoringFormula.weights).reduce((sum, w) => sum + w, 0);
+      if (Math.abs(total - 100) >= 0.1) {
+        toast({
+          title: "Invalid Scoring Formula",
+          description: "Custom weights must sum to 100%.",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
     // Store data in sessionStorage for the processing page
     const evaluationData = {
       questions: questions.filter((q) => q.text.trim()),
       hasQuestionPaper: !!questionPaper,
       hasModelAnswer: !!modelAnswerFile,
       totalMarks,
+      scoringFormula,
     };
     sessionStorage.setItem("evaluationData", JSON.stringify(evaluationData));
     navigate("/processing");
@@ -128,9 +145,8 @@ export default function UploadPage() {
               </div>
               <div className="flex items-center gap-4">
                 <span
-                  className={`text-2xl font-bold ${
-                    isValid ? "text-primary" : "text-destructive"
-                  }`}
+                  className={`text-2xl font-bold ${isValid ? "text-primary" : "text-destructive"
+                    }`}
                 >
                   {totalMarks}
                 </span>
@@ -231,6 +247,19 @@ export default function UploadPage() {
                 </Button>
               </div>
             </div>
+
+            {/* Scoring Formula Customizer */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="mb-8"
+            >
+              <ScoringFormulaCustomizer
+                onFormulaChange={setScoringFormula}
+                initialFormula={scoringFormula}
+              />
+            </motion.div>
 
             {/* Evaluate Button */}
             <motion.div

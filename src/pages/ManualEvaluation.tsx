@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { Header } from "@/components/layout/Header";
+import { ScoringFormulaCustomizer } from "@/components/grading/ScoringFormulaCustomizer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -10,6 +11,7 @@ import { ScoreDisplay } from "@/components/grading/ScoreDisplay";
 import { ArrowRight, Sparkles, Loader2, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { ScoringFormula, DEFAULT_FORMULA } from "@/lib/scoringFormula";
 
 interface EvaluationResult {
   finalScore: number;
@@ -24,11 +26,12 @@ interface EvaluationResult {
 export default function ManualEvaluation() {
   const navigate = useNavigate();
   const { toast } = useToast();
-  
+
   const [question, setQuestion] = useState("");
   const [modelAnswer, setModelAnswer] = useState("");
   const [studentAnswer, setStudentAnswer] = useState("");
   const [maxMarks, setMaxMarks] = useState(10);
+  const [scoringFormula, setScoringFormula] = useState<ScoringFormula>(DEFAULT_FORMULA);
   const [isEvaluating, setIsEvaluating] = useState(false);
   const [result, setResult] = useState<EvaluationResult | null>(null);
 
@@ -51,6 +54,19 @@ export default function ManualEvaluation() {
       return;
     }
 
+    // Validate scoring formula if using custom
+    if (scoringFormula.useCustom) {
+      const total = Object.values(scoringFormula.weights).reduce((sum, w) => sum + w, 0);
+      if (Math.abs(total - 100) >= 0.1) {
+        toast({
+          title: "Invalid Scoring Formula",
+          description: "Custom weights must sum to 100%.",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
     setIsEvaluating(true);
     setResult(null);
 
@@ -61,6 +77,7 @@ export default function ManualEvaluation() {
           modelAnswer,
           studentAnswer,
           maxMarks,
+          scoringFormula,
         },
       });
 
@@ -88,6 +105,7 @@ export default function ManualEvaluation() {
     setModelAnswer("");
     setStudentAnswer("");
     setMaxMarks(10);
+    setScoringFormula(DEFAULT_FORMULA);
     setResult(null);
   };
 
@@ -173,6 +191,14 @@ export default function ManualEvaluation() {
                       value={studentAnswer}
                       onChange={(e) => setStudentAnswer(e.target.value)}
                       className="min-h-[150px] resize-none"
+                    />
+                  </div>
+
+                  {/* Scoring Formula Customizer */}
+                  <div className="mt-5">
+                    <ScoringFormulaCustomizer
+                      onFormulaChange={setScoringFormula}
+                      initialFormula={scoringFormula}
                     />
                   </div>
 

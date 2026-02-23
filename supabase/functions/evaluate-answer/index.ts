@@ -11,20 +11,31 @@ serve(async (req) => {
   }
 
   try {
-    const { question, modelAnswer, studentAnswer, maxMarks } = await req.json();
+    const { question, modelAnswer, studentAnswer, maxMarks, scoringFormula } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
+    // Use custom formula if provided, otherwise use default
+    const weights = scoringFormula?.useCustom
+      ? scoringFormula.weights
+      : { keywords: 30, semantic: 40, diagram: 20, grammar: 10 };
+
+    // Convert percentages to decimals
+    const kw = weights.keywords / 100;
+    const sem = weights.semantic / 100;
+    const dia = weights.diagram / 100;
+    const gram = weights.grammar / 100;
+
     const systemPrompt = `You are an expert academic grading assistant. Evaluate student answers against model answers using this exact scoring formula:
 
 SCORING BREAKDOWN (for max marks = ${maxMarks}):
-1. Keyword Matching (30%): Compare key terms/concepts between student and model answer
-2. Semantic Similarity (40%): Assess overall meaning and understanding  
-3. Diagram Evaluation (20%): If diagrams are mentioned/required, check if student included them
-4. Grammar Penalty (-10%): Deduct for grammar, spelling, clarity issues
+1. Keyword Matching (${weights.keywords}%): Compare key terms/concepts between student and model answer
+2. Semantic Similarity (${weights.semantic}%): Assess overall meaning and understanding  
+3. Diagram Evaluation (${weights.diagram}%): If diagrams are mentioned/required, check if student included them
+4. Grammar Penalty (${weights.grammar}%): Deduct for grammar, spelling, clarity issues
 
 IMPORTANT: 
 - Final score MUST be between 0 and ${maxMarks}
@@ -33,10 +44,10 @@ IMPORTANT:
 
 Respond in this exact JSON format:
 {
-  "keywordScore": <number 0 to ${maxMarks * 0.3}>,
-  "semanticScore": <number 0 to ${maxMarks * 0.4}>,
-  "diagramScore": <number 0 to ${maxMarks * 0.2}>,
-  "grammarPenalty": <number 0 to ${maxMarks * 0.1}>,
+  "keywordScore": <number 0 to ${maxMarks * kw}>,
+  "semanticScore": <number 0 to ${maxMarks * sem}>,
+  "diagramScore": <number 0 to ${maxMarks * dia}>,
+  "grammarPenalty": <number 0 to ${maxMarks * gram}>,
   "finalScore": <number 0 to ${maxMarks}>,
   "feedback": "<detailed feedback on the answer>",
   "improvements": ["<improvement 1>", "<improvement 2>", "<improvement 3>"]
@@ -98,9 +109,9 @@ Evaluate the student answer and provide scores in the specified JSON format.`;
     let result;
     try {
       // Extract JSON from potential markdown code blocks
-      const jsonMatch = content.match(/```json\s*([\s\S]*?)\s*```/) || 
-                        content.match(/```\s*([\s\S]*?)\s*```/) ||
-                        [null, content];
+      const jsonMatch = content.match(/```json\s*([\s\S]*?)\s*```/) ||
+        content.match(/```\s*([\s\S]*?)\s*```/) ||
+        [null, content];
       const jsonString = jsonMatch[1] || content;
       result = JSON.parse(jsonString.trim());
     } catch (parseError) {
@@ -121,11 +132,11 @@ Evaluate the student answer and provide scores in the specified JSON format.`;
       };
     }
 
-    // Ensure scores are within bounds
-    result.keywordScore = Math.min(maxMarks * 0.3, Math.max(0, result.keywordScore || 0));
-    result.semanticScore = Math.min(maxMarks * 0.4, Math.max(0, result.semanticScore || 0));
-    result.diagramScore = Math.min(maxMarks * 0.2, Math.max(0, result.diagramScore || 0));
-    result.grammarPenalty = Math.min(maxMarks * 0.1, Math.max(0, result.grammarPenalty || 0));
+    // Ensure scores are within bounds using dynamic weights
+    result.keywordScore = Math.min(maxMarks * kw, Math.max(0, result.keywordScore || 0));
+    result.semanticScore = Math.min(maxMarks * sem, Math.max(0, result.semanticScore || 0));
+    result.diagramScore = Math.min(maxMarks * dia, Math.max(0, result.diagramScore || 0));
+    result.grammarPenalty = Math.min(maxMarks * gram, Math.max(0, result.grammarPenalty || 0));
     result.finalScore = Math.min(
       maxMarks,
       Math.max(0, result.keywordScore + result.semanticScore + result.diagramScore - result.grammarPenalty)
